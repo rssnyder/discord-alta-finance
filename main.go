@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"time"
 
@@ -10,8 +11,7 @@ import (
 
 func main() {
 	token := flag.String("token", "", "discord bot token")
-	nickname := flag.String("nickname", "", "bot nickname")
-	activity := flag.String("activity", "", "bot activity")
+	mode := flag.String("mode", "tvl", "bot type")
 	status := flag.Int("status", 0, "0: playing, 1: listening")
 	refresh := flag.Int("refresh", 300, "seconds between refresh")
 	flag.Parse()
@@ -30,41 +30,87 @@ func main() {
 
 	guilds, err := dg.UserGuilds(100, "", "")
 	if err != nil {
-		log.Println(err)
-		*nickname = ""
+		log.Fatal(err)
 	}
 	if len(guilds) == 0 {
-		*nickname = ""
+		log.Fatal("Not in any guilds!")
 	}
 
+	activity := "alta.finance"
 	ticker := time.NewTicker(time.Duration(*refresh) * time.Second)
 
 	for {
 		select {
 		case <-ticker.C:
-			if *nickname != "" {
+			switch *mode {
+			case "tvl":
+				data, err := GetEarn()
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+
+				nickname := fmt.Sprintf("TVL: %.2f", data.Tvl)
 				for _, g := range guilds {
-					err = dg.GuildMemberNickname(g.ID, "@me", *nickname)
+					err = dg.GuildMemberNickname(g.ID, "@me", nickname)
 					if err != nil {
 						log.Println(err)
 						continue
 					} else {
-						log.Printf("Set nickname in %s: %s\n", g.Name, *nickname)
+						log.Printf("Set nickname in %s: %s\n", g.Name, nickname)
 					}
 				}
-			}
-			if *activity != "" {
-				switch *status {
-				case 0:
-					err = dg.UpdateGameStatus(0, *activity)
-				case 1:
-					err = dg.UpdateListeningStatus(*activity)
-				}
+
+				activity = "Earn Total Volume"
+			case "apr":
+				data, err := GetEarn()
 				if err != nil {
-					log.Printf("Unable to set activity: %s\n", err)
-				} else {
-					log.Printf("Set activity: %s\n", *activity)
+					log.Println(err)
+					continue
 				}
+
+				nickname := fmt.Sprintf("APR: %f", data.MaxAPR)
+				for _, g := range guilds {
+					err = dg.GuildMemberNickname(g.ID, "@me", nickname)
+					if err != nil {
+						log.Println(err)
+						continue
+					} else {
+						log.Printf("Set nickname in %s: %s\n", g.Name, nickname)
+					}
+				}
+
+				activity = "Earn Max USDC APR"
+			case "treasury":
+				data, err := GetTreasury()
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+
+				nickname := fmt.Sprintf("Treasury: %.2f", data.Balance)
+				for _, g := range guilds {
+					err = dg.GuildMemberNickname(g.ID, "@me", nickname)
+					if err != nil {
+						log.Println(err)
+						continue
+					} else {
+						log.Printf("Set nickname in %s: %s\n", g.Name, nickname)
+					}
+				}
+
+				activity = "Alta Finance Treasury"
+			}
+			switch *status {
+			case 0:
+				err = dg.UpdateGameStatus(0, activity)
+			case 1:
+				err = dg.UpdateListeningStatus(activity)
+			}
+			if err != nil {
+				log.Printf("Unable to set activity: %s\n", err)
+			} else {
+				log.Printf("Set activity: %s\n", activity)
 			}
 		}
 	}
