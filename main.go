@@ -50,7 +50,7 @@ func main() {
 					continue
 				}
 
-				nickname := fmt.Sprintf("TVL: %.2fK", data.Tvl / 1000)
+				nickname := fmt.Sprintf("TVL: %.2fM", data.Tvl / 1000000)
 				for _, g := range guilds {
 					err = dg.GuildMemberNickname(g.ID, "@me", nickname)
 					if err != nil {
