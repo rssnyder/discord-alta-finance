@@ -80,7 +80,7 @@ func main() {
 					}
 				}
 
-				activity = "Earn Max USDC APR"
+				activity = "Earn Max APR"
 			case "treasury":
 				data, err := GetTreasury()
 				if err != nil {
